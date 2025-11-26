@@ -27,10 +27,10 @@ class SQL3Util():
     # create the tables for datatypes, typemembers
     def create_tables(self):
         self.cursor.execute("CREATE TABLE IF NOT EXISTS datatypes (idkey TEXT PRIMARY KEY, typeName TEXT, typePath TEXT, typeKind TEXT, inherits TEXT, memberList TEXT, tags TEXT, flags TEXT, notes TEXT)")
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS typemembers (idkey TEXT PRIMARY KEY, memberName TEXT, typeName TEXT, typePath TEXT, attributes TEXT, idkeyRef TEXT, valdefs TEXT, tags TEXT, flags TEXT, notes TEXT)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS typemembers (idkey TEXT PRIMARY KEY, memberName TEXT, typeName TEXT, typePath TEXT, attributes TEXT, idkeyRef TEXT, valdefs TEXT, tags TEXT, flags TEXT, notes TEXT, comments TEXT)")
 
     # insert this type (dict) into the datatypes table, merge the TAGS if row already exists
-    # columns: idkey, typeName, typePath, typeKind, inherits, memberList, tags, flags, notes
+    # columns: idkey, typeName, typePath, typeKind, inherits, memberList, tags, flags, notes, comments
     def datatype_insert(self, typeinfo):
         # hash the non-TAG contents to create a unique ID
         idkey = hashutil.hash_datatype(typeinfo)
@@ -76,8 +76,8 @@ class SQL3Util():
                         tagSet.add(tag)
         tagString = json.dumps(list(tagSet))
 
-        self.cursor.execute("INSERT OR REPLACE INTO typemembers (idkey, memberName, typeName, typePath, attributes, idkeyRef, valdefs, tags, flags, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
-                            (idkey, member['memberName'], member['typeName'], member['typePath'], member['attributes'], member['idkeyRef'], member['valdefs'], tagString, member['flags'], member['notes']))
+        self.cursor.execute("INSERT OR REPLACE INTO typemembers (idkey, memberName, typeName, typePath, attributes, idkeyRef, valdefs, tags, flags, notes, comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
+                            (idkey, member['memberName'], member['typeName'], member['typePath'], member['attributes'], member['idkeyRef'], member['valdefs'], tagString, member['flags'], member['notes'], member['comments']))
         return idkey
 
     # recursive finder: return a collection of records and their dependencies that match a typeName
@@ -123,7 +123,7 @@ class SQL3Util():
             elemIdList = json.loads(dType[5])
             for elemId in elemIdList:
                 # get each member, add to list.  TAGS should match from here on.
-                elemInfo = self.cursor.execute('SELECT idkey, memberName, typeName, typePath, attributes, idkeyRef, valdefs, flags, notes FROM typemembers WHERE idkey=?',(elemId,)).fetchall()
+                elemInfo = self.cursor.execute('SELECT idkey, memberName, typeName, typePath, attributes, idkeyRef, valdefs, flags, notes, comments FROM typemembers WHERE idkey=?',(elemId,)).fetchall()
                 if len(elemInfo) > 0:
                     typeGroup.append(elemInfo)
                 else:
@@ -277,7 +277,7 @@ class SQL3Util():
         return self.cursor.execute("SELECT idkey, typeName, typePath, typeKind, inherits, memberList, tags, flags, notes FROM datatypes").fetchall()
 
     def typemembers_readall(self):
-        return self.cursor.execute("SELECT idkey, memberName, typeName, typePath, attributes, idkeyRef, valdefs, flags, notes FROM typemembers").fetchall()
+        return self.cursor.execute("SELECT idkey, memberName, typeName, typePath, attributes, idkeyRef, valdefs, flags, notes, comments FROM typemembers").fetchall()
 
     # this supports the GUI, returning a list of [idkey, name, path, keys, count of members(non-recurs)]
     def datatypes_treevalues(self):

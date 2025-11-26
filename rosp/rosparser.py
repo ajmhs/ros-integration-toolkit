@@ -14,7 +14,7 @@ from sqldb import types as idltypes
 
 # try this here
 # scan for data typedef files
-def scan_paths_for_datatype_files(paths, types, tags, dbname):
+def scan_paths_for_datatype_files(paths, types, tags, stripComments, dbname):
     rosDataTypes = ['.msg','.srv','.action']
     myRosTypes = {type for type in types if type in rosDataTypes}
 
@@ -23,6 +23,7 @@ def scan_paths_for_datatype_files(paths, types, tags, dbname):
     mydb.create_tables()
 
     rosparser_ = ROSParser(mydb)
+    rosparser_.strip_comments = stripComments
     rosfilecount = 0
     idlfilecount = 0
 
@@ -74,6 +75,7 @@ class ROSParser():
     def __init__(self, dbase):
         self.dbase = dbase
         self.placeholder_member_id = ''
+        self.strip_comments = False
 
     def prepare_input(self, data):
         from re import compile, UNICODE, MULTILINE
@@ -124,7 +126,8 @@ class ROSParser():
         # clean up contents and make them consistent for easier parsing
         file_contents = self.prepare_input(file_contents)
         lines = file_contents.split('\n')
-        lines = self._clear_comments(lines)
+        if self.strip_comments:
+            lines = self._clear_comments(lines)
 
         # disqualfy if not a ROS data typedef file
         if self.file_qualify(lines, file_path) == False:
@@ -155,7 +158,7 @@ class ROSParser():
         dtype = { 'idkey': '0', 'typeName': name_base, 'typePath': module_path, 'typeKind': 'msg', 'inherits': '', 'memberList': '', 'tags': tags, 'flags': '', 'notes': json.dumps(fnotes) }
         dtype_members = []
         typemember_count = 0
-        ctype = { 'idkey': '0', 'typeName': name_base + '_Constants', 'typePath': module_path, 'typeKind': 'msg-const', 'inherits': '', 'memberList': '', 'tags': tags, 'flags': '', 'notes': json.dumps(fnotes) }
+        ctype = { 'idkey': '0', 'typeName': name_base + '_Constants', 'typePath': module_path, 'typeKind': 'msg-const', 'inherits': '', 'memberList': '', 'tags': tags, 'flags': '', 'notes': json.dumps(fnotes), 'comments': '' }
         const_member_ids = []
         const_count = 0
         type_name = name_base
@@ -208,15 +211,28 @@ class ROSParser():
             else:
                 new_const = False
 
-                # columns: idkey, memberName, typeName, typePath, attributes, idkeyRef, valdefs, tags, flags, notes
+                # columns: idkey, memberName, typeName, typePath, attributes, idkeyRef, valdefs, tags, flags, notes,
                 # line_members = {'attributes': '', 'valdefs': '', 'flags': '', 'notes': ''}
-                line_members = {'memberName': '', 'typeName': '', 'typePath': '', 'attributes': '', 'idkeyRef': '', 'valdefs': '', 'tags': tags, 'flags': '', 'notes': ''}
+                line_members = {'memberName': '', 'typeName': '', 'typePath': '', 'attributes': '', 'idkeyRef': '', 'valdefs': '', 'tags': tags, 'flags': '', 'notes': '', 'comments': ''}
+                
+                # Extract comments from the line (# marks start of comment)
+                comment_text = ''
+                if '#' in line:
+                    comment_idx = line.find('#')
+                    comment_text = line[comment_idx+1:].strip()
+                    line = line[:comment_idx]
+                
+                # Store comment if present
+                if comment_text:
+                    line_members['comments'] = comment_text
+                
                 endIdx = -1
                 match = re.search('[^a-zA-Z0-9_/]', line)
                 if match:
                     endIdx = match.start()
                 if endIdx == -1:
-                    print("Error parsing typename in line: {} for file {}".format(line, file_path))
+                    if not comment_text:
+                        print("Error parsing typename in line: {} for file {}".format(line, file_path))
                     continue
 
                 # type names are either 'primitive', or they ref another via typePath/typeName or just typeName
@@ -429,7 +445,7 @@ class ROSParser():
     # "uint8 structure_needs_at_least_one_member"
     def insert_placeholder_member(self, dbase, tags):
         # members: idkey, memberName, typeName, typePath, attributes, idkeyRef, valdefs, tags, flags, notes
-        line_members = {'memberName': 'structure_needs_at_least_one_member', 'typeName': 'uint8', 'typePath': '', 'attributes': '', 'idkeyRef': '', 'valdefs': '', 'tags': tags, 'flags': '', 'notes': ''}
+        line_members = {'memberName': 'structure_needs_at_least_one_member', 'typeName': 'uint8', 'typePath': '', 'attributes': '', 'idkeyRef': '', 'valdefs': '', 'tags': tags, 'flags': '', 'notes': '', 'comments': ''}
         #line_members['idkeyRef'] = str(idltypes.typeNameToTypeNumber(line_members['typeName'], 'ros'))
         primTypeNumber = idltypes.typeNameToTypeNumber(line_members['typeName'], 'ros')
         if primTypeNumber != -1:

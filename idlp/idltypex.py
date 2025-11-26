@@ -47,6 +47,8 @@ def export_idl_type(trec):
                 # 2022Jun24: eTypeName = '{}::{}::dds_::{}_'.format(eTypePath, modkind, eTypeName)
                 eTypeName = '{}::{}::dds_::{}_'.format(eTypePath, 'msg', eTypeName)
             valdefs = ''
+            if elem[0][9]:
+                idlout.append('{}// {}'.format(' ' * ind, elem[0][9]))   # comments
             if elem[0][6] != '':        # valdefs
                 try:
                     valdefs = json.loads(elem[0][6])

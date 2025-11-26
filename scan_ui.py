@@ -102,6 +102,8 @@ class TypeRepoUI(tk.Tk):
 		#self.scanTypeIdl = ttk.Checkbutton(self.tabScan, text='IDL', variable=self.scanIdlVar, onvalue=True)
 		#self.scanXmlVar = tk.BooleanVar(value=False)
 		#self.scanTypeXml = ttk.Checkbutton(self.tabScan, text='XML', variable=self.scanXmlVar, onvalue=True)
+		self.scanStripCommentsVar = tk.BooleanVar(value=False)
+		self.scanStripCommentsButton = ttk.Checkbutton(self.tabScan, text='Strip Comments', variable=self.scanStripCommentsVar, onvalue=True)
 		# path to write database file
 		self.scanDBasePathValue = tk.StringVar()
 		self.scanDBasePathValue.set(self.my_cwd)
@@ -218,6 +220,8 @@ class TypeRepoUI(tk.Tk):
 		self.scanTypeRos.grid(column=1, row=3, sticky=(tk.W))
 		#self.scanTypeIdl.grid(column=2, row=3, sticky=(tk.W))
 		#self.scanTypeXml.grid(column=3, row=3, sticky=(tk.W))
+		self.scanStripCommentsButton.grid(column=2, row=3, sticky=(tk.W))
+
 		self.scanDBasePathButton.grid(column=0, row=4)
 		self.scanDBasePath.grid(column=1, row=4)
 		self.scanDBaseFileNameLabel.grid(column=0, row=5)
@@ -519,7 +523,7 @@ class TypeRepoUI(tk.Tk):
 			return
 		# FIXME: this needs to ensure the path and filename/ext format is correct.
 		dbFilePathToWrite = os.path.realpath('{}/{}.db'.format(self.scanDBasePathValue.get(), self.scanDBaseFileNameValue.get()))
-		rosparser.scan_paths_for_datatype_files([self.scanPathValue.get()], ['.msg', '.srv', '.action'], [self.scanTagsValue.get()], dbFilePathToWrite)
+		rosparser.scan_paths_for_datatype_files([self.scanPathValue.get()], ['.msg', '.srv', '.action'], [self.scanTagsValue.get()], self.scanStripCommentsVar.get(), dbFilePathToWrite)
 
 		# now load the database
 		self.databaseOpenAndLoadFile(dbFilePathToWrite)
