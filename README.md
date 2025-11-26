@@ -36,6 +36,7 @@ ending in `.msg`, `.srv`, or `.action`).
  - **Scan Path..** sets the directory location to begin the scan; all files and folders in this path are scanned recursively.
  - **Tags:** adds a text 'tag' entry to the scanned data types.  Tags are used to help speed searches in large data sets.
  - **File Types**: presently supporting ROS data type files only.  More file types are in development.
+ - **Strip Comments**: the parser attempts to include comments from the ROS data type files and apply them to the IDL. Set this to disable comment parsing
  - **Output Path** selects where to write the resulting database file.
  - **.db File Name** the name assigned to the resulting database file.
  - **Start Scan** launches the scan of the filesystem per the above settings.
