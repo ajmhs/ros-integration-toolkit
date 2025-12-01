@@ -13,16 +13,18 @@ from rosp import rosparser
 from idlp import idltypex
 from sqldb import sql3db
 
-def perform_headless_scan(output_dir=None):
+
+def perform_headless_scan(*, output_dir, dds_ns_flag=True):
     """Perform a headless scan and export.
 
-    output_dir: optional path to place exported IDL files. If None, defaults to './'
+    Parameters:
+    - output_dir (str): output directory where IDL files will be written (mandatory, keyword-only)
+    - dds_ns_flag (bool): whether to include the `dds_` namespace in generated IDL (default: True)
     """
 
     ros_path = os.getenv('AMENT_PREFIX_PATH')
     db_filename = os.path.abspath('./headless.db')
-    # use provided output_dir or default to current directory './'
-    base_path = os.path.abspath(output_dir) if output_dir else os.path.abspath('./')
+    base_path = os.path.abspath(output_dir)
 
     rosparser.scan_paths_for_datatype_files([ros_path], ['.msg', '.srv', '.action'], [''], False, db_filename)
 
@@ -75,7 +77,7 @@ def perform_headless_scan(output_dir=None):
             export_filename = os.path.join(output_dir, filename)
             
             # Export this single type
-            idltypex.export_idl_type_file([type_item], export_filename)
+            idltypex.export_idl_type_file([type_item], export_filename, dds_namespace=dds_ns_flag)
                 
         except Exception as e:
             print(f"Failed to export type: {str(e)}")
@@ -83,6 +85,18 @@ def perform_headless_scan(output_dir=None):
 
 # --------------------------------------------------
 if __name__ == "__main__":
-    # allow optional output directory as first CLI argument
-    out_dir = sys.argv[1] if len(sys.argv) > 1 else None
-    perform_headless_scan(out_dir)
+    # CLI usage: scan_headless.py <output_dir> [dds_ns_flag]
+    if len(sys.argv) < 2:
+        print("Usage: python scan_headless.py <output_dir> [dds_ns_flag]")
+        print("  <output_dir> : required path where per-type IDL files will be written")
+        print("  [dds_ns_flag] : optional true/false (default: true)")
+        sys.exit(2)
+
+    out_dir = sys.argv[1]
+    dds_flag = True
+    if len(sys.argv) > 2:
+        arg = sys.argv[2].lower()
+        if arg in ('0', 'false', 'no', 'off'):
+            dds_flag = False
+
+    perform_headless_scan(output_dir=out_dir, dds_ns_flag=dds_flag)

@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 
 # export (print) a single IDL file of the passed-in type collection
-def export_idl_type(trec):
+def export_idl_type(trec, dds_namespace=True):
     idlout = []
     for item in trec:
         typedefLines = []
@@ -31,8 +31,11 @@ def export_idl_type(trec):
             modkind = 'action'
         idlout.append('{}module {} {{'.format(' ' * ind, modkind))
         ind += indstep
-        idlout.append('{}module dds_ {{'.format(' ' * ind))
-        ind += indstep
+        # Optionally emit a `dds_` nested module. This isn't mandatory now
+        # thanks to the ros2 aliasing improvements in Connext 7.5.0 
+        if dds_namespace:
+            idlout.append('{}module dds_ {{'.format(' ' * ind))
+            ind += indstep
 
         if '-const' in item[0][3]:          # typeKind
             idlout.append('{}module {} {{'.format(' ' * ind, item[0][1]))
@@ -44,8 +47,13 @@ def export_idl_type(trec):
             eTypeName = elem[0][2]
             eTypePath = elem[0][3]
             if len(eTypePath) > 0:
-                # 2022Jun24: eTypeName = '{}::{}::dds_::{}_'.format(eTypePath, modkind, eTypeName)
-                eTypeName = '{}::{}::dds_::{}_'.format(eTypePath, 'msg', eTypeName)
+                # Qualify referenced type names with their module path. When
+                # `dds_namespace` is enabled we include the `dds_` namespace
+                # segment in the qualification.
+                if dds_namespace:
+                    eTypeName = '{}::{}::dds_::{}_'.format(eTypePath, 'msg', eTypeName)
+                else:
+                    eTypeName = '{}::{}::{}_'.format(eTypePath, 'msg', eTypeName)
             valdefs = ''
             if elem[0][9]:
                 idlout.append('{}// {}'.format(' ' * ind, elem[0][9]))   # comments
@@ -209,9 +217,9 @@ def export_idl_type(trec):
     return idlout
 
 # export (create/write) a single IDL file of the passed-in type collection
-def export_idl_type_file(trec, typeFileName, typeNameList=[]):
+def export_idl_type_file(trec, typeFileName, typeNameList=[], dds_namespace=True):
     # convert types to IDL
-    idlTypeFile = export_idl_type(trec)
+    idlTypeFile = export_idl_type(trec, dds_namespace)
 
     # write IDL to file
     if not typeFileName.endswith('.idl'):
