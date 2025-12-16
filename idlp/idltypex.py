@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 
 # export (print) a single IDL file of the passed-in type collection
-def export_idl_type(trec, dds_namespace=True):
+def export_idl_type(trec, ddsNamespace=True):
     idlout = []
     for item in trec:
         typedefLines = []
@@ -33,7 +33,7 @@ def export_idl_type(trec, dds_namespace=True):
         ind += indstep
         # Optionally emit a `dds_` nested module. This isn't mandatory now
         # thanks to the ros2 aliasing improvements in Connext 7.5.0 
-        if dds_namespace:
+        if ddsNamespace:
             idlout.append('{}module dds_ {{'.format(' ' * ind))
             ind += indstep
 
@@ -48,9 +48,9 @@ def export_idl_type(trec, dds_namespace=True):
             eTypePath = elem[0][3]
             if len(eTypePath) > 0:
                 # Qualify referenced type names with their module path. When
-                # `dds_namespace` is enabled we include the `dds_` namespace
+                # `ddsNamespace` is enabled we include the `dds_` namespace
                 # segment in the qualification.
-                if dds_namespace:
+                if ddsNamespace:
                     eTypeName = '{}::{}::dds_::{}_'.format(eTypePath, 'msg', eTypeName)
                 else:
                     eTypeName = '{}::{}::{}_'.format(eTypePath, 'msg', eTypeName)
@@ -217,9 +217,9 @@ def export_idl_type(trec, dds_namespace=True):
     return idlout
 
 # export (create/write) a single IDL file of the passed-in type collection
-def export_idl_type_file(trec, typeFileName, typeNameList=[], dds_namespace=True):
+def export_idl_type_file(trec, typeFileName, typeNameList=[], ddsNamespace=True):
     # convert types to IDL
-    idlTypeFile = export_idl_type(trec, dds_namespace)
+    idlTypeFile = export_idl_type(trec, ddsNamespace)
 
     # write IDL to file
     if not typeFileName.endswith('.idl'):
@@ -235,5 +235,5 @@ def export_idl_type_file(trec, typeFileName, typeNameList=[], dds_namespace=True
 
   
 # return a list containing the IDL of the passed-in type collection
-def type_to_string_list(trec):
-    return export_idl_type(trec)
+def type_to_string_list(trec, ddsNamespace=True):
+    return export_idl_type(trec, ddsNamespace)

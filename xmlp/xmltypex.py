@@ -11,7 +11,7 @@ from sqldb import types as idltypes
 from pathlib import Path
 
 # export (print) a single XML file of the passed-in type collection
-def export_xml_type(trec):
+def export_xml_type(trec, ddsNamespace=True):
     xmlout = []
     xmlout.append('<types>')
     for item in trec:
@@ -34,8 +34,11 @@ def export_xml_type(trec):
             modkind = 'action'
         xmlout.append('{}<module name="{}">'.format(' ' * ind, modkind))
         ind += indstep
-        xmlout.append('{}<module name="dds_">'.format(' ' * ind))
-        ind += indstep
+        # Optionally emit a `dds_` nested module. This isn't mandatory now
+        # thanks to the ros2 aliasing improvements in Connext 7.5.0 
+        if ddsNamespace:
+            xmlout.append('{}<module name="dds_">'.format(' ' * ind))
+            ind += indstep
 
         if '-const' in item[0][3]:          # typeKind
             xmlout.append('{}<module name="{}">'.format(' ' * ind, item[0][1]))
@@ -53,10 +56,19 @@ def export_xml_type(trec):
 
             # if the idkeyRef shows it's a primitive value, convert to XML primitive typename
             if len(eTypePath) > 0:
-                eTypeName = '{}::{}::dds_::{}_'.format(eTypePath, modkind, eTypeName)
+                # Qualify referenced type names with their module path. When
+                # `ddsNamespace` is enabled we include the `dds_` namespace
+                # segment in the qualification.
+                if ddsNamespace:
+                    eTypeName = '{}::{}::dds_::{}_'.format(eTypePath, modkind, eTypeName)
+                else:
+                    eTypeName = '{}::{}::{}_'.format(eTypePath, modkind, eTypeName)
             isBasicType = len(elem[0][5]) < 3
             if isBasicType:
                 eTypeName = idltypes.typeNumberToTypeName(int(elem[0][5]), 'xml')
+
+            if elem[0][9]: # comments
+                xmlout.append('{}<!-- {} -->'.format(' ' * ind, elem[0][9]))
 
             # extract any const or default values
             valdefs = ''
@@ -175,12 +187,12 @@ def export_xml_type(trec):
   
 # file exporters
 # XML data type definitions file -----------------------------------------------------
-def export_xml_type_file(trec, typeFileName, typeNameList=[]):
+def export_xml_type_file(trec, typeFileName, typeNameList=[], ddsNamespace=True):
     # wrap the types in header and footer
     xmlTypeFile = []
     xmlTypeFile.append('<?xml version="1.0" encoding="UTF-8"?>')
     xmlTypeFile.append('<dds xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://community.rti.com/schema/6.1.0/rti_dds_topic_types.xsd">')
-    xmlTypeFile.extend(export_xml_type(trec))
+    xmlTypeFile.extend(export_xml_type(trec, ddsNamespace))
     xmlTypeFile.append('</dds>')
 
     # write to file
@@ -195,7 +207,7 @@ def export_xml_type_file(trec, typeFileName, typeNameList=[]):
 
 
 # RTI Connector XML config file ----------------------------------------------------------
-def export_xml_connector_cfg_file(trec, typeFileName, typeNameList):
+def export_xml_connector_cfg_file(trec, typeFileName, typeNameList, ddsNamespace=True):
     # wrap the types in header and footer
     connectorFile = []
     connectorFile.append('<?xml version="1.0" encoding="UTF-8"?>')
@@ -221,7 +233,7 @@ def export_xml_connector_cfg_file(trec, typeFileName, typeNameList):
     connectorFile.append('    </qos_profile>')
     connectorFile.append('  </qos_library>')
     # get XML data type info
-    connectorFile.extend(export_xml_type(trec))
+    connectorFile.extend(export_xml_type(trec, ddsNamespace))
     connectorFile.append('  <domain_library name="MyDomainLibrary">')
     connectorFile.append('    <domain name="MyDomain" domain_id="0">')
     # register the typenames
@@ -291,11 +303,11 @@ def export_xml_connector_cfg_file(trec, typeFileName, typeNameList):
     return typeFileName
 
 # return a list containing the XML of the passed-in type collection
-def type_to_string_list(trec):
-    return export_xml_type(trec)
+def type_to_string_list(trec, ddsNamespace=True):
+    return export_xml_type(trec, ddsNamespace)
 
 # RTI Routing Service XML config file ----------------------------------------------------------
-def export_xml_routsvc_cfg_file(trec, typeFileName, typeNameList):
+def export_xml_routsvc_cfg_file(trec, typeFileName, typeNameList, ddsNamespace=True):
     # wrap the types in header and footer
     configFile = []
     configFile.append('<?xml version="1.0" encoding="UTF-8"?>')
@@ -312,7 +324,7 @@ def export_xml_routsvc_cfg_file(trec, typeFileName, typeNameList):
     configFile.append('    </qos_profile>')
     configFile.append('  </qos_library>')
     # data type info 
-    configFile.extend(export_xml_type(trec))
+    configFile.extend(export_xml_type(trec, ddsNamespace))
     # routing service
     configFile.append('  <routing_service name="MyRoutingService">')
     configFile.append('    <domain_route name="DomainRoute" enabled="true">')
@@ -351,7 +363,7 @@ def export_xml_routsvc_cfg_file(trec, typeFileName, typeNameList):
     return typeFileName
 
 # RTI Recording Service XML config file ----------------------------------------------------------
-def export_xml_recsvc_cfg_file(trec, typeFileName, typeNameList):
+def export_xml_recsvc_cfg_file(trec, typeFileName, typeNameList, ddsNamespace=True):
     # wrap the types in header and footer
     configFile = []
     configFile.append('<?xml version="1.0" encoding="UTF-8"?>')
@@ -368,7 +380,7 @@ def export_xml_recsvc_cfg_file(trec, typeFileName, typeNameList):
     configFile.append('    </qos_profile>')
     configFile.append('  </qos_library>')
     # data type info 
-    configFile.extend(export_xml_type(trec))
+    configFile.extend(export_xml_type(trec, ddsNamespace))
     # recording service
     configFile.append('  <recording_service name="MyRecordingService">')
     configFile.append('    <domain_participant name="MyRecSvcParticipant">')
@@ -396,14 +408,14 @@ def export_xml_recsvc_cfg_file(trec, typeFileName, typeNameList):
     return typeFileName
 
 # RTI Web Integration Service XML config file ----------------------------------------------------------
-def export_xml_webintsvc_cfg_file(trec, typeFileName, typeNameList):
+def export_xml_webintsvc_cfg_file(trec, typeFileName, typeNameList, ddsNamespace=True):
     # wrap the types in header and footer
     configFile = []
     configFile.append('<?xml version="1.0" encoding="UTF-8"?>')
     configFile.append('<dds xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"')
     configFile.append('     xsi:noNamespaceSchemaLocation="http://community.rti.com/schema/6.1.0/rti_web_integration_service.xsd">')
     # data type info 
-    configFile.extend(export_xml_type(trec))
+    configFile.extend(export_xml_type(trec, ddsNamespace))
     # QoS library
     configFile.append('  <qos_library name="QosLibrary">')
     configFile.append('    <qos_profile name="DefaultProfile" base_name="BuiltinQosLibExp::Generic.BestEffort" is_default_qos="true">')
@@ -451,7 +463,7 @@ def export_xml_webintsvc_cfg_file(trec, typeFileName, typeNameList):
     return typeFileName
 
 # RTI Prototyper XML config file ----------------------------------------------------------
-def export_xml_prototyper_cfg_file(trec, typeFileName, typeNameList):
+def export_xml_prototyper_cfg_file(trec, typeFileName, typeNameList, ddsNamespace=True):
     # wrap the types in header and footer
     configFile = []
     configFile.append('<?xml version="1.0" encoding="UTF-8"?>')
@@ -487,7 +499,7 @@ def export_xml_prototyper_cfg_file(trec, typeFileName, typeNameList):
     configFile.append('    </qos_profile>')
     configFile.append('  </qos_library>')
     # data type info 
-    configFile.extend(export_xml_type(trec))
+    configFile.extend(export_xml_type(trec, ddsNamespace))
     # domain
     configFile.append('  <domain_library name="MyDomainLibrary">')
     configFile.append('    <domain name="MyProtoDomain" domain_id="0">')

@@ -174,6 +174,9 @@ class TypeRepoUI(tk.Tk):
 		self.exportFileNameValue = tk.StringVar()
 		self.exportFileName = ttk.Entry(self.tabQuery, textvariable=self.exportFileNameValue)
 
+		self.exportStripDDSNSVar = tk.BooleanVar(value=False)
+		self.exportStripDDSNSButton = ttk.Checkbutton(self.tabQuery, text='Strip ndds_ namespace', variable=self.exportStripDDSNSVar, onvalue=True, command=lambda: self.event_generate("<<DDSNSToggled>>"))
+
 		self.buttonExpTypeInfo = ttk.Button(self.tabQuery, text='Create file', command=lambda: self.event_generate("<<ExportTypeFile>>"))
 
 		# Edit tab
@@ -239,11 +242,12 @@ class TypeRepoUI(tk.Tk):
 		self.queryIncKeys.grid(column=1, row=4, sticky=(tk.W, tk.N))
 		self.exportTopLabel.grid(column=3, row=2, columnspan=2, sticky=tk.W)
 		self.exportTypeLabel.grid(column=3, row=3, sticky=tk.E)
-		self.cboxExportType.grid(column=4, row=3, sticky=(tk.E, tk.W))
-		self.exportPathButton.grid(column=3, row=4, sticky=(tk.E))
-		self.exportPath.grid(column=4, row=4, sticky=(tk.E, tk.W))
-		self.exportFileNameLabel.grid(column=3, row=5, sticky=(tk.E, tk.W))
-		self.exportFileName.grid(column=4, row=5, sticky=(tk.E, tk.W))
+		self.cboxExportType.grid(column=4, row=3, sticky=(tk.E, tk.W))		
+		self.exportStripDDSNSButton.grid(column=4, row=4, sticky=(tk.W))
+		self.exportPathButton.grid(column=3, row=5, sticky=(tk.E))
+		self.exportPath.grid(column=4, row=5, sticky=(tk.E, tk.W))
+		self.exportFileNameLabel.grid(column=3, row=6, sticky=(tk.E, tk.W))
+		self.exportFileName.grid(column=4, row=6, sticky=(tk.E, tk.W))
 		self.buttonExpTypeInfo.grid(column=4, row=0, sticky=tk.E, ipady=10, ipadx=10)
 
 		# edit tab layout
@@ -338,6 +342,7 @@ class TypeRepoUI(tk.Tk):
 		self.bind("<<RemoveTagsInTypes>>", self.removeTagsInSelectedTypes)
 		self.bind("<<UpdateDatabaseWithTags>>", self.updateDatabaseTagsForSelectedTypes)
 		self.bind("<<ComboboxSelected>>", self.comboboxExportTypeChanged)
+		self.bind("<<DDSNSToggled>>", self.exportStripDDSNSToggled)
 
 		self.comboboxExportTypeChanged()	# force update to current selection.
 		self.setExportFileNameInEntryBox()
@@ -564,20 +569,22 @@ class TypeRepoUI(tk.Tk):
 				if itemIsNotInOutput:
 					typeInfoToExport.append(typeItem)
 		
+		useDDSNamespace = (not self.exportStripDDSNSVar.get())
+
 		fileNameToCreate = os.path.abspath(self.exportPathValue.get() + '/' + self.exportFileNameValue.get())
 		fileNameCreated = ''
 		if self.cboxExportType.get() == self.exportArgLabels['idl']:
-			fileNameCreated = idltypex.export_idl_type_file(typeInfoToExport, fileNameToCreate)
+			fileNameCreated = idltypex.export_idl_type_file(typeInfoToExport, fileNameToCreate, useDDSNamespace)
 		elif self.cboxExportType.get() == self.exportArgLabels['idlcmake']:
-			fileNameCreated = cxxcodex.export_idl_cxx11_app(typeInfoToExport, fileNameToCreate, typesToExport)
+			fileNameCreated = cxxcodex.export_idl_cxx11_app(typeInfoToExport, fileNameToCreate, typesToExport, useDDSNamespace)
 		elif self.cboxExportType.get() == self.exportArgLabels['xml']:
-			fileNameCreated = xmltypex.export_xml_type_file(typeInfoToExport, fileNameToCreate)
+			fileNameCreated = xmltypex.export_xml_type_file(typeInfoToExport, fileNameToCreate, ddsNamespace=useDDSNamespace)
 		elif self.cboxExportType.get() == self.exportArgLabels['connector']:
-			fileNameCreated = xmltypex.export_xml_connector_cfg_file(typeInfoToExport, fileNameToCreate, typesToExport)
+			fileNameCreated = xmltypex.export_xml_connector_cfg_file(typeInfoToExport, fileNameToCreate, typesToExport, useDDSNamespace)
 		elif self.cboxExportType.get() == self.exportArgLabels['routsvc']:
-			fileNameCreated = xmltypex.export_xml_routsvc_cfg_file(typeInfoToExport, fileNameToCreate, typesToExport)
+			fileNameCreated = xmltypex.export_xml_routsvc_cfg_file(typeInfoToExport, fileNameToCreate, typesToExport, useDDSNamespace)
 		elif self.cboxExportType.get() == self.exportArgLabels['recsvc']:
-			fileNameCreated = xmltypex.export_xml_recsvc_cfg_file(typeInfoToExport, fileNameToCreate, typesToExport)
+			fileNameCreated = xmltypex.export_xml_recsvc_cfg_file(typeInfoToExport, fileNameToCreate, typesToExport, useDDSNamespace)
 		#elif self.cboxExportType.get() == self.exportArgLabels['persistsvc']:
 		#	print('PERSISTSVC')
 		#elif self.cboxExportType.get() == self.exportArgLabels['queuesvc']:
@@ -628,6 +635,11 @@ class TypeRepoUI(tk.Tk):
 		self.setExportFileNameInEntryBox()
 
 		# now update the preview
+		self.previewSelectedType()
+
+	# handler for the "Strip ndds_ namespace" checkbox toggle
+	def exportStripDDSNSToggled(self, *args):
+		# refresh preview to reflect namespace setting immediately
 		self.previewSelectedType()
 
 	# update the export filename in the GUI 'Entry' box
@@ -741,10 +753,12 @@ class TypeRepoUI(tk.Tk):
 			dbToOpen = self.dbFileNames[int(self.typeTreeRef[typeKeyId][5])]
 			foundRec = self.getTypesFromDatabase(typeKeyId, dbToOpen)
 
+			useDDSNamespace = (not self.exportStripDDSNSVar.get())
+
 			if self.cboxExportType.get() == self.exportArgLabels['idl']	or self.cboxExportType.get() == self.exportArgLabels['idlcmake']:
-				typeText = idltypex.type_to_string_list(foundRec)
+				typeText = idltypex.type_to_string_list(foundRec, ddsNamespace=useDDSNamespace)
 			else:
-				typeText = xmltypex.type_to_string_list(foundRec)
+				typeText = xmltypex.type_to_string_list(foundRec, ddsNamespace=useDDSNamespace)
 			self.previewText.delete('0.0', tk.END)
 			self.previewText.insert(tk.END, '\n'.join(typeText))
 

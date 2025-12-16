@@ -125,7 +125,7 @@ def perform_headless_scan(*, output_dir, dds_ns_flag=True):
             idlout = build_inherit_imports(types_db, type_info[4])
 
             # Export this single type
-            idlout.extend(idltypex.export_idl_type([type_item], dds_namespace=dds_ns_flag))
+            idlout.extend(idltypex.export_idl_type([type_item], ddsNamespace=dds_ns_flag))
 
             f = open(export_filename, "w")
             for line in idlout:
