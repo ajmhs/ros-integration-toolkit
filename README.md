@@ -36,7 +36,7 @@ ending in `.msg`, `.srv`, or `.action`).
  - **Scan Path..** sets the directory location to begin the scan; all files and folders in this path are scanned recursively.
  - **Tags:** adds a text 'tag' entry to the scanned data types.  Tags are used to help speed searches in large data sets.
  - **File Types**: presently supporting ROS data type files only.  More file types are in development.
- - **Strip Comments**: the parser attempts to include comments from the ROS data type files and apply them to the IDL. Set this to disable comment parsing
+ - **Strip Comments**: the parser attempts to include comments from the ROS data type files and apply them to the output. Set this to disable comment parsing
  - **Output Path** selects where to write the resulting database file.
  - **.db File Name** the name assigned to the resulting database file.
  - **Start Scan** launches the scan of the filesystem per the above settings.
@@ -47,6 +47,7 @@ Filters are case-sensitive.
 Export File Name is automatically generated when selecting data types, but can be entered directly by the user.  
 Export options include:
  - **IDL Types File**: Exports the selected types as IDL (Interface Description Language), can be used with RTIDDSGen to generate typesupport code in a variety of programming languages.
+ - **Strip dds_ namespace**: Exports the selected types without the dds_ namespace which is now not mandatory thanks to the ROS aliasing improvements in Connext 7.5.0.
  - **XML Types File**: Exports the selected types as XML, can be used with RTI Admin Console and other RTI ecosystem components.
  - **Routing Service Config File**: Creates a configuration XML file for RTI Routing Service, using the selected types, in a generic 2-way topic bridge, ready to be customized by the user to set the appropriate topic direction and domains.
  - **Recording Service Config File**: Creates a configuration XML file for RTI Recording Service for the selected topics.
