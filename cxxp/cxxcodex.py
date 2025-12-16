@@ -17,7 +17,7 @@ from idlp import idltypex
 # <export_dir>/src/<typefilename>_app:  <typefilename>.cxx 
 # <export_dir>/src/typeclass: cros2_<typename>_support.cxx/hpp for each type, plus cros2_common.cxx/hpp
 # <export_dir>/src/generated: <typefilename>.idl
-def export_idl_cxx11_app(trec, typeFileName, typeNameList):
+def export_idl_cxx11_app(trec, typeFileName, typeNameList, ddsNamespace=True):
     # create directories if they don't already exist
     tf = Path(typeFileName)
     tfDir = Path(tf.parents[0])
@@ -30,7 +30,7 @@ def export_idl_cxx11_app(trec, typeFileName, typeNameList):
     Path(tfDir, 'build').mkdir(parents=True, exist_ok=True)
 
     # convert types to IDL and write to file
-    idlTypeFile = idltypex.export_idl_type(trec)
+    idlTypeFile = idltypex.export_idl_type(trec, ddsNamespace=ddsNamespace)
     idlFileToWrite = Path(tfDir, 'src/generated', tf.name)
     if idlFileToWrite.suffix != '.idl':
         idlFileToWrite = idlFileToWrite.with_suffix('.idl')
@@ -51,11 +51,14 @@ def export_idl_cxx11_app(trec, typeFileName, typeNameList):
     # <%$<IDLFileNameOnly>$%> --> just the IDL filename (no path, no extension)
     # typName[0=idKey, 1=typeName, 2=typePath, 3=dbFileName]
     for typName in typeNameList:
+        
+        rosPathAndTypeName = '{}::msg::{}{}_'.format(typName[2], 'dds_::' if ddsNamespace else '', typName[1])
+        
         # read & modify template wrap.cxx file
         fr = open('./cxxp/classwrapexample.cxx.txt', "r")
         frbuf = fr.read()
         fr.close()
-        rosPathAndTypeName = '{}::msg::dds_::{}_'.format(typName[2], typName[1])
+        
         frbuf = frbuf.replace('<$%<TypeNameLowerCase>%$>', typName[1].lower())
         frbuf = frbuf.replace('<$%<TypeNameUpperCase>%$>', typName[1].upper())
         frbuf = frbuf.replace('<$%<TypeNamePreserveCase>%$>', typName[1])
@@ -70,7 +73,7 @@ def export_idl_cxx11_app(trec, typeFileName, typeNameList):
         fr = open('./cxxp/classwrapexample.hpp.txt', "r")
         frbuf = fr.read()
         fr.close()
-        rosPathAndTypeName = '{}::msg::dds_::{}_'.format(typName[2], typName[1])
+        
         frbuf = frbuf.replace('<$%<TypeNameLowerCase>%$>', typName[1].lower())
         frbuf = frbuf.replace('<$%<TypeNameUpperCase>%$>', typName[1].upper())
         frbuf = frbuf.replace('<$%<TypeNamePreserveCase>%$>', typName[1])
@@ -104,7 +107,8 @@ def export_idl_cxx11_app(trec, typeFileName, typeNameList):
             frbuf.pop(idx)
             for typName in typeNameList:
                 # typName[0=idKey, 1=typeName, 2=typePath, 3=dbFileName]
-                rosPathAndTypeName = ' * {}::msg::dds_::{}_\n'.format(typName[2], typName[1])
+
+                rosPathAndTypeName = ' * {}::msg::{}{}_\n'.format(typName[2], 'dds_::' if ddsNamespace else '', typName[1])                
                 frbuf.insert(idx, rosPathAndTypeName)
                 idx += 1
 
